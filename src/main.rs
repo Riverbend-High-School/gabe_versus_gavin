@@ -21,6 +21,7 @@ use crate::poll::Poll;
 
 lazy_static! {
     static ref CURRENT_POLL: Arc<Mutex<Poll>> = Arc::new(Mutex::new(Poll::default()));
+    static ref ALREADY_VOTED: Arc<Mutex<Vec<(String, i32)>>> = Arc::new(Mutex::new(Vec::new()));
 }
 
 #[get("/")]
@@ -28,12 +29,17 @@ async fn index() -> Option<NamedFile> {
     NamedFile::open(Path::new("static/index.html")).await.ok()
 }
 
+#[get("/<file..>")]
+async fn files(file: PathBuf) -> Option<NamedFile> {
+    NamedFile::open(Path::new("static/").join(file)).await.ok()
+}
+
 #[rocket::main]
 async fn main() {
     dotenv().ok();
 
     match rocket::build()
-        .mount("/", routes![index,])
+        .mount("/", routes![index, files])
         .mount(
             "/api",
             routes![

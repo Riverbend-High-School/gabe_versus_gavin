@@ -1,4 +1,5 @@
-use crate::{make_json_response, CURRENT_POLL};
+use crate::{make_json_response, ALREADY_VOTED, CURRENT_POLL};
+use rocket::http::{Cookie, CookieJar};
 use rocket::response::content::Json;
 use rocket::serde::{self, Deserialize, Serialize};
 use rocket::tokio::time::timeout;
@@ -48,8 +49,8 @@ impl Default for Poll {
     }
 }
 
-#[get("/results")]
-pub async fn results() -> Json<String> {
+#[get("/results", format = "application/json")]
+pub async fn results(cookies: &CookieJar<'_>) -> Json<String> {
     let five_seconds = std::time::Duration::from_secs(5);
     let current_poll = match timeout(five_seconds, CURRENT_POLL.lock()).await {
         Ok(poll) => poll,
@@ -57,11 +58,26 @@ pub async fn results() -> Json<String> {
             return make_json_response!(500, "Could not get current poll. Please try again later.");
         }
     };
+    if cookies.get("id").is_none() {
+        use rand::Rng;
+        const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
+                                abcdefghijklmnopqrstuvwxyz\
+                                0123456789)(*&^%$#@!~";
+        const SESSION_LEN: usize = 60;
+
+        let session_id: String = (0..SESSION_LEN)
+            .map(|_| {
+                let idx = rand::thread_rng().gen_range(0..CHARSET.len()); // must generate multiple thread_rng's for async functions
+                CHARSET[idx] as char
+            })
+            .collect();
+        cookies.add(Cookie::new("id", session_id.clone()));
+    }
     make_json_response!(200, "Success", current_poll.clone())
 }
 
 #[post("/vote/<option>")]
-pub async fn vote(option: i32) -> Json<String> {
+pub async fn vote(option: i32, cookies: &CookieJar<'_>) -> Json<String> {
     let five_seconds = std::time::Duration::from_secs(5);
     let mut current_poll = match timeout(five_seconds, CURRENT_POLL.lock()).await {
         Ok(poll) => poll,
@@ -74,12 +90,33 @@ pub async fn vote(option: i32) -> Json<String> {
         return make_json_response!(400, "Poll is not active");
     }
 
-    if option < 0 || option >= current_poll.votes.len() as i32 {
-        return make_json_response!(400, "Invalid option");
-    }
-    current_poll.votes[option as usize] += 1;
+    if let Some(session_id) = cookies.get("id") {
+        let mut already_voted = ALREADY_VOTED.lock().await;
+        let session_id_str = session_id.to_string();
+        if let Some((i, (_, choice))) = already_voted
+            .iter()
+            .enumerate()
+            .find(|(_, (session_id, _))| *session_id == session_id_str)
+        {
+            if *choice == option {
+                current_poll.votes[option as usize] -= 1;
+                already_voted.remove(i);
+                return make_json_response!(200, "Successfully undid vote!");
+            } else {
+                return make_json_response!(400, "You have already voted");
+            }
+        }
 
-    make_json_response!(200, "OK")
+        if option < 0 || option >= current_poll.votes.len() as i32 {
+            return make_json_response!(400, "Invalid option");
+        }
+        current_poll.votes[option as usize] += 1;
+        already_voted.push((session_id_str, option));
+
+        make_json_response!(200, "OK")
+    } else {
+        make_json_response!(400, "You don't have a voter ID!")
+    }
 }
 
 #[post(
@@ -95,6 +132,13 @@ pub async fn admin(new_poll: serde::json::Json<New_Poll>) -> Json<String> {
             return make_json_response!(500, "Could not get current poll. Please try again later.");
         }
     };
+
+    if new_poll.options.len() > 4 {
+        return make_json_response!(400, "Too many options");
+    }
+    let mut already_voted = ALREADY_VOTED.lock().await;
+    *already_voted = Vec::new();
+
     current_poll.replace(&new_poll.into_inner());
 
     make_json_response!(200, "OK")
