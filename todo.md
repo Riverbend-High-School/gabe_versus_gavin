@@ -1,0 +1,4 @@
+# Endpoints
+- [ ] Results 
+- [ ] Vote
+- [ ] Admin
