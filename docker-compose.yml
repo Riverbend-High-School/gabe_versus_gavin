@@ -1,0 +1,11 @@
+version: '3.7'
+
+services:
+  gabe_vs_gavin:
+    container_name: gabe_vs_gavin
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "80:9999"
+    restart: unless-stopped
