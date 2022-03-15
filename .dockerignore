@@ -403,8 +403,8 @@ docker-compose.yml
 */temp*
 */*/temp*
 temp?
-/frontend/wgt-frontend/node_modules/
-/frontend/wgt-frontend/dist/
+/frontend/node_modules/
+/frontend/dist/
 **/target
 /data
 /static
