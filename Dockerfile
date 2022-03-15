@@ -6,11 +6,9 @@ USER root
 
 RUN update-ca-certificates
 
-
 ENV TZ=America/New_York
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# Get Postgres
 RUN apt update
 RUN apt install -y nodejs npm git
 RUN apt update

@@ -20,6 +20,7 @@ pub struct Poll {
     pub active: bool,
 }
 impl Poll {
+    #[allow(dead_code)]
     pub fn new(title: String, options: Vec<String>, active: bool) -> Self {
         let len = options.len();
         Self {
@@ -93,29 +94,41 @@ pub async fn vote(option: i32, cookies: &CookieJar<'_>) -> Json<String> {
     if let Some(session_id) = cookies.get("id") {
         let mut already_voted = ALREADY_VOTED.lock().await;
         let session_id_str = session_id.to_string();
-        if let Some((i, (_, choice))) = already_voted
+        if let Some(_) = already_voted
             .iter()
-            .enumerate()
-            .find(|(_, (session_id, _))| *session_id == session_id_str)
+            .find(|session_id| **session_id == session_id_str)
         {
-            if *choice == option {
-                current_poll.votes[option as usize] -= 1;
-                already_voted.remove(i);
-                return make_json_response!(200, "Successfully undid vote!");
-            } else {
-                return make_json_response!(400, "You have already voted");
-            }
+            return make_json_response!(400, "You have already voted");
         }
 
         if option < 0 || option >= current_poll.votes.len() as i32 {
             return make_json_response!(400, "Invalid option");
         }
         current_poll.votes[option as usize] += 1;
-        already_voted.push((session_id_str, option));
+        already_voted.push(session_id_str);
 
         make_json_response!(200, "OK")
     } else {
         make_json_response!(400, "You don't have a voter ID!")
+    }
+}
+
+#[post["/vote/check_vote_status"]]
+pub async fn check_vote_status(cookies: &CookieJar<'_>) -> Json<String> {
+    if let Some(session_id) = cookies.get("id") {
+        let already_voted = ALREADY_VOTED.lock().await;
+        let session_id_str = session_id.to_string();
+        if let Some(_) = already_voted
+            .iter()
+            .enumerate()
+            .find(|(_, session_id)| **session_id == session_id_str)
+        {
+            return make_json_response!(400, "You have already voted");
+        }
+
+        make_json_response!(200, "ID not found")
+    } else {
+        make_json_response!(200, "No ID set")
     }
 }
 
@@ -135,6 +148,8 @@ pub async fn admin(new_poll: serde::json::Json<New_Poll>) -> Json<String> {
 
     if new_poll.options.len() > 4 {
         return make_json_response!(400, "Too many options");
+    } else if new_poll.options.len() == 0 {
+        return make_json_response!(400, "Too few options");
     }
     let mut already_voted = ALREADY_VOTED.lock().await;
     *already_voted = Vec::new();

@@ -6,10 +6,8 @@ extern crate rocket;
 #[macro_use]
 extern crate lazy_static;
 
-use dotenv::dotenv;
 use rocket::{fs::NamedFile, tokio::sync::Mutex};
 use std::{
-    env,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -21,7 +19,7 @@ use crate::poll::Poll;
 
 lazy_static! {
     static ref CURRENT_POLL: Arc<Mutex<Poll>> = Arc::new(Mutex::new(Poll::default()));
-    static ref ALREADY_VOTED: Arc<Mutex<Vec<(String, i32)>>> = Arc::new(Mutex::new(Vec::new()));
+    static ref ALREADY_VOTED: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
 }
 
 #[get("/")]
@@ -36,8 +34,6 @@ async fn files(file: PathBuf) -> Option<NamedFile> {
 
 #[rocket::main]
 async fn main() {
-    dotenv().ok();
-
     match rocket::build()
         .mount("/", routes![index, files])
         .mount(
@@ -47,7 +43,8 @@ async fn main() {
                 poll::vote,
                 poll::admin,
                 poll::activate,
-                poll::deactivate
+                poll::deactivate,
+                poll::check_vote_status,
             ],
         )
         .attach(crate::util::CORS)
