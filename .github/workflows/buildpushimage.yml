@@ -36,4 +36,4 @@ jobs:
           push: true
           tags: |
             riverbendhighschool/gabe_versus_gavin:dev
-            ghcr.io/Riverbend-High-School/gabe_versus_gavin:dev
+            ghcr.io/riverbend-high-school/gabe_versus_gavin:dev
