@@ -40,7 +40,7 @@
 <script>
 // import { useCookies } from "vue3-cookies";
 
-const BASE_URL = "http://localhost";
+const BASE_URL = "";
 
 export default {
     name: "home-page",
