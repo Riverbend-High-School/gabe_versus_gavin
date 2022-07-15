@@ -8,7 +8,7 @@
 
 This repository contains the backend server code for a student voting system used by Gabe and Gavin on the Gabe and Gavin Show. This api is used to record votes on polls generated on the show.
 
-This backend is running on Rust using [Rocket v0.5.0-rc1](https://rocket.rs/). It is designed to be used with a the frontend component found in [the frontend component folder](/frontend). Thee frontend included with this api is implemented in Vue.
+This backend is running on Rust using [Rocket v0.5.0-rc1](https://rocket.rs/). It is designed to be used with the frontend component found in [the frontend component folder](/frontend). Thee frontend included with this api is implemented in Vue.
 
 Created by [Gabriel Hogan](https://gabrielhogan.com) and [Samuel Rembisz](https://stappsworld.com).
 
